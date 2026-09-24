@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.ccp.decorators.CcpJsonFieldName;
 import com.ccp.decorators.CcpJsonRepresentation;
+import com.ccp.decorators.CcpPropertiesDecorator;
 import com.ccp.decorators.CcpStringDecorator;
 import com.ccp.decorators.CcpTextDecorator;
 import com.ccp.dependency.injection.CcpDependencyInjection;
@@ -28,6 +29,8 @@ import com.ccp.implementations.file.bucket.gcp.CcpGcpFileBucket;
 import com.ccp.implementations.http.apache.mime.CcpApacheMimeHttp;
 import com.ccp.implementations.instant.messenger.telegram.CcpTelegramInstantMessenger;
 import com.ccp.implementations.json.gson.CcpGsonJsonHandler;
+import com.ccp.implementations.mensageria.sender.gcp.pubsub.CcpGcpPubSubMensageriaSender;
+import com.ccp.local.testings.implementations.CcpLocalInstances;
 import com.jn.entities.JnEntityAsyncTask;
 import com.jn.mensageria.JnMensageriaReceiver;
 @EnableAutoConfiguration(exclude={MongoAutoConfiguration.class})
@@ -42,10 +45,25 @@ import com.jn.mensageria.JnMensageriaReceiver;
  */
 public class JnMensageriaConsumerGcpPubSubPushSpringStarter {
 	enum JsonFieldNames implements CcpJsonFieldName{
-		message
+		message, localEnvironment
+	}
+
+	/**
+	 * Mesma leitura feita por {@code CcpRestApiUtils.isLocalEnvironment()}, replicada aqui de
+	 * propósito: depender de {@code ccp_rest-api-handler-exception_spring} só por este boolean
+	 * traria actuator e log4j2 para dentro deste app e cruzaria duas versões de Spring Boot
+	 * (aquele módulo usa 3.1.8, este usa 3.2.4).
+	 */
+	static boolean isLocalEnvironment() {
+		CcpStringDecorator ccpStringDecorator = new CcpStringDecorator("application_properties");
+		CcpPropertiesDecorator propertiesFrom = ccpStringDecorator.propertiesFrom();
+		CcpJsonRepresentation systemProperties = propertiesFrom.environmentVariablesOrClassLoaderOrFile();
+		boolean localEnvironment = systemProperties.getAsBoolean(JsonFieldNames.localEnvironment);
+		return localEnvironment;
 	}
 
 	public static void main(String[] args) {
+		boolean localEnvironment = isLocalEnvironment();
 		CcpElasticSearchQueryExecutor ccpElasticSearchQueryExecutor = new CcpElasticSearchQueryExecutor();
 		CcpTelegramInstantMessenger ccpTelegramInstantMessenger = new CcpTelegramInstantMessenger();
 		CcpElasticSearchDbRequest ccpElasticSearchDbRequest = new CcpElasticSearchDbRequest();
@@ -55,8 +73,8 @@ public class JnMensageriaConsumerGcpPubSubPushSpringStarter {
 		CcpGsonJsonHandler ccpGsonJsonHandler = new CcpGsonJsonHandler();
 		CcpApacheMimeHttp ccpApacheMimeHttp = new CcpApacheMimeHttp();
 		CcpGcpFileBucket ccpGcpFileBucket = new CcpGcpFileBucket();
-		CcpDependencyInjection.loadAllDependencies( 
-//LATER				CcpLocalInstances.syncMensageriaListener,
+		CcpDependencyInjection.loadAllDependencies(
+				localEnvironment ? CcpLocalInstances.syncMensageriaListener : new CcpGcpPubSubMensageriaSender(),
 				ccpElasticSearchQueryExecutor,
 				ccpTelegramInstantMessenger,
 				ccpElasticSearchDbRequest,
