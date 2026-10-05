@@ -33,26 +33,29 @@ import com.ccp.implementations.mensageria.sender.gcp.pubsub.CcpGcpPubSubMensager
 import com.ccp.local.testings.implementations.CcpLocalInstances;
 import com.jn.entities.JnEntityAsyncTask;
 import com.jn.mensageria.JnMensageriaReceiver;
+/**
+ * Spring Boot application that receives the Pub/Sub push messages at {@code /{topic}}. It wires the dependencies
+ * (Elasticsearch, Telegram, SendGrid and so on) and hands each message to {@code JnMensageriaReceiver}.
+ */
 @EnableAutoConfiguration(exclude={MongoAutoConfiguration.class})
 @CrossOrigin
 @RestController
 @RequestMapping("/{topic}")
 @SpringBootApplication
-/**
- * Aplicação Spring Boot que recebe mensagens Pub/Sub push via endpoint REST {@code /{topic}}.
- * Inicializa as dependências de DI (Elasticsearch, Telegram, SendGrid, etc.) e delega o
- * processamento de cada mensagem ao {@code JnMensageriaReceiver}.
- */
 public class JnMensageriaConsumerGcpPubSubPushSpringStarter {
+	/** Fields read by the consumer. */
 	enum JsonFieldNames implements CcpJsonFieldName{
-		message, localEnvironment
+		/** The Pub/Sub envelope of the pushed message. */
+		message,
+		/** The system property that tells whether the system runs on a developer machine. */
+		localEnvironment
 	}
 
 	/**
-	 * Mesma leitura feita por {@code CcpRestApiUtils.isLocalEnvironment()}, replicada aqui de
-	 * propósito: depender de {@code ccp_rest-api-handler-exception_spring} só por este boolean
-	 * traria actuator e log4j2 para dentro deste app e cruzaria duas versões de Spring Boot
-	 * (aquele módulo usa 3.1.8, este usa 3.2.4).
+	 * The same reading done by {@code CcpRestApiUtils.isLocalEnvironment()}, repeated here on purpose: depending on
+	 * {@code ccp_rest-api-handler-exception_spring} only for this boolean would bring actuator and log4j2 into this app and
+	 * mix two Spring Boot versions (that module uses 3.1.8, this one 3.2.4).
+	 * @return the {@code localEnvironment} system property
 	 */
 	static boolean isLocalEnvironment() {
 		CcpStringDecorator ccpStringDecorator = new CcpStringDecorator("application_properties");
@@ -62,6 +65,10 @@ public class JnMensageriaConsumerGcpPubSubPushSpringStarter {
 		return localEnvironment;
 	}
 
+	/**
+	 * Wires the dependencies and starts Spring.
+	 * @param args the command line arguments
+	 */
 	public static void main(String[] args) {
 		boolean localEnvironment = isLocalEnvironment();
 		CcpElasticSearchQueryExecutor ccpElasticSearchQueryExecutor = new CcpElasticSearchQueryExecutor();
@@ -87,6 +94,12 @@ public class JnMensageriaConsumerGcpPubSubPushSpringStarter {
 				);
 		SpringApplication.run(JnMensageriaConsumerGcpPubSubPushSpringStarter.class, args);
 	}
+	/**
+	 * Receives a pushed message: reads {@code message.data}, turns it into JSON and runs the task of the topic (see finding:
+	 * the data is encoded to Base64 again instead of decoded).
+	 * @param topic the topic
+	 * @param body the Pub/Sub push request
+	 */
 	@PostMapping
 	public void onReceiveMessage(@PathVariable("topic") String topic, @RequestBody Map<String, Object> body) {
 		CcpJsonRepresentation CcpJsonRepresentation = new CcpJsonRepresentation(body);
@@ -104,6 +117,11 @@ public class JnMensageriaConsumerGcpPubSubPushSpringStarter {
 				);
 	}
 
+	/**
+	 * Runs the task of the topic with a JSON sent as is, without the Pub/Sub envelope (for tests).
+	 * @param topic the topic
+	 * @param json the message
+	 */
 	@PostMapping("/testing")
 	public void onReceiveMessageTesting(@PathVariable("topic") String topic, @RequestBody Map<String, Object> json) {
 		CcpJsonRepresentation md = new CcpJsonRepresentation(json);
