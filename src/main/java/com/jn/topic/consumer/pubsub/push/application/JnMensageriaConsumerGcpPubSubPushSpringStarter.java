@@ -95,26 +95,37 @@ public class JnMensageriaConsumerGcpPubSubPushSpringStarter {
 		SpringApplication.run(JnMensageriaConsumerGcpPubSubPushSpringStarter.class, args);
 	}
 	/**
-	 * Receives a pushed message: reads {@code message.data}, turns it into JSON and runs the task of the topic (see finding:
-	 * the data is encoded to Base64 again instead of decoded).
+	 * Receives a pushed message and runs the task of the topic.
 	 * @param topic the topic
 	 * @param body the Pub/Sub push request
 	 */
 	@PostMapping
 	public void onReceiveMessage(@PathVariable("topic") String topic, @RequestBody Map<String, Object> body) {
-		CcpJsonRepresentation CcpJsonRepresentation = new CcpJsonRepresentation(body);
-		CcpJsonRepresentation internalMap = CcpJsonRepresentation.getInnerJson(JsonFieldNames.message);
-		String data = internalMap.getAsString(JnEntityAsyncTask.Fields.data);
-		CcpStringDecorator ccpStringDecorator = new CcpStringDecorator(data);
-		CcpTextDecorator ccpStringDecoratorText = ccpStringDecorator.text();
-		var asBase64 = ccpStringDecoratorText.asBase64();
-		String str = asBase64.content;
-		CcpJsonRepresentation json = new CcpJsonRepresentation(str);
+		CcpJsonRepresentation json = getMessage(body);
 		JnMensageriaReceiver.INSTANCE.executeProcess(
 				JnEntityAsyncTask.ENTITY,  
 				topic,  
 				json  
 				);
+	}
+
+	/**
+	 * Extracts the message of a Pub/Sub push request: {@code message.data} comes in Base64 (the publisher sends it in Base64
+	 * through the REST api, and the push delivers it the same way), so it is decoded, as UTF-8, before becoming JSON. Until
+	 * 2026-10-06 the data was encoded to Base64 once more instead of decoded, and every pushed message failed to parse.
+	 * @param body the Pub/Sub push request
+	 * @return the message
+	 */
+	static CcpJsonRepresentation getMessage(Map<String, Object> body) {
+		CcpJsonRepresentation pushRequest = new CcpJsonRepresentation(body);
+		CcpJsonRepresentation internalMap = pushRequest.getInnerJson(JsonFieldNames.message);
+		String data = internalMap.getAsString(JnEntityAsyncTask.Fields.data);
+		CcpStringDecorator ccpStringDecorator = new CcpStringDecorator(data);
+		CcpTextDecorator ccpStringDecoratorText = ccpStringDecorator.text();
+		CcpTextDecorator decodedData = ccpStringDecoratorText.fromBase64();
+		String messageAsText = decodedData.content;
+		CcpJsonRepresentation json = new CcpJsonRepresentation(messageAsText);
+		return json;
 	}
 
 	/**
