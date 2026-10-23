@@ -31,7 +31,6 @@ import com.ccp.implementations.instant.messenger.telegram.CcpTelegramInstantMess
 import com.ccp.implementations.json.gson.CcpGsonJsonHandler;
 import com.ccp.implementations.mensageria.sender.gcp.pubsub.CcpGcpPubSubMensageriaSender;
 import com.ccp.local.testings.implementations.CcpLocalInstances;
-import com.jn.entities.JnEntityAsyncTask;
 import com.jn.mensageria.JnMensageriaReceiver;
 /**
  * Spring Boot application that receives the Pub/Sub push messages at {@code /{topic}}. It wires the dependencies
@@ -47,6 +46,8 @@ public class JnMensageriaConsumerGcpPubSubPushSpringStarter {
 	enum JsonFieldNames implements CcpJsonFieldName{
 		/** The Pub/Sub envelope of the pushed message. */
 		message,
+		/** The message itself, in Base64, inside the Pub/Sub envelope. */
+		data,
 		/** The system property that tells whether the system runs on a developer machine. */
 		localEnvironment
 	}
@@ -71,17 +72,17 @@ public class JnMensageriaConsumerGcpPubSubPushSpringStarter {
 	 */
 	public static void main(String[] args) {
 		boolean localEnvironment = isLocalEnvironment();
-		CcpElasticSearchQueryExecutor ccpElasticSearchQueryExecutor = new CcpElasticSearchQueryExecutor();
-		CcpTelegramInstantMessenger ccpTelegramInstantMessenger = new CcpTelegramInstantMessenger();
-		CcpElasticSearchDbRequest ccpElasticSearchDbRequest = new CcpElasticSearchDbRequest();
-		CcpSendGridEmailSender ccpSendGridEmailSender = new CcpSendGridEmailSender();
-		CcpElasticSerchDbBulk ccpElasticSerchDbBulk = new CcpElasticSerchDbBulk();
-		CcpElasticSearchCrud ccpElasticSearchCrud = new CcpElasticSearchCrud();
-		CcpGsonJsonHandler ccpGsonJsonHandler = new CcpGsonJsonHandler();
-		CcpApacheMimeHttp ccpApacheMimeHttp = new CcpApacheMimeHttp();
-		CcpGcpFileBucket ccpGcpFileBucket = new CcpGcpFileBucket();
+		CcpElasticSearchQueryExecutor ccpElasticSearchQueryExecutor = CcpElasticSearchQueryExecutor.INSTANCE;
+		CcpTelegramInstantMessenger ccpTelegramInstantMessenger = CcpTelegramInstantMessenger.INSTANCE;
+		CcpElasticSearchDbRequest ccpElasticSearchDbRequest = CcpElasticSearchDbRequest.INSTANCE;
+		CcpSendGridEmailSender ccpSendGridEmailSender = CcpSendGridEmailSender.INSTANCE;
+		CcpElasticSerchDbBulk ccpElasticSerchDbBulk = CcpElasticSerchDbBulk.INSTANCE;
+		CcpElasticSearchCrud ccpElasticSearchCrud = CcpElasticSearchCrud.INSTANCE;
+		CcpGsonJsonHandler ccpGsonJsonHandler = CcpGsonJsonHandler.INSTANCE;
+		CcpApacheMimeHttp ccpApacheMimeHttp = CcpApacheMimeHttp.INSTANCE;
+		CcpGcpFileBucket ccpGcpFileBucket = CcpGcpFileBucket.INSTANCE;
 		CcpDependencyInjection.loadAllDependencies(
-				localEnvironment ? CcpLocalInstances.syncMensageriaListener : new CcpGcpPubSubMensageriaSender(),
+				localEnvironment ? CcpLocalInstances.syncMensageriaListener : CcpGcpPubSubMensageriaSender.INSTANCE,
 				ccpElasticSearchQueryExecutor,
 				ccpTelegramInstantMessenger,
 				ccpElasticSearchDbRequest,
@@ -102,11 +103,7 @@ public class JnMensageriaConsumerGcpPubSubPushSpringStarter {
 	@PostMapping
 	public void onReceiveMessage(@PathVariable("topic") String topic, @RequestBody Map<String, Object> body) {
 		CcpJsonRepresentation json = getMessage(body);
-		JnMensageriaReceiver.INSTANCE.executeProcess(
-				JnEntityAsyncTask.ENTITY,  
-				topic,  
-				json  
-				);
+		JnMensageriaReceiver.INSTANCE.executeProcess(topic, json);
 	}
 
 	/**
@@ -119,7 +116,7 @@ public class JnMensageriaConsumerGcpPubSubPushSpringStarter {
 	static CcpJsonRepresentation getMessage(Map<String, Object> body) {
 		CcpJsonRepresentation pushRequest = new CcpJsonRepresentation(body);
 		CcpJsonRepresentation internalMap = pushRequest.getInnerJson(JsonFieldNames.message);
-		String data = internalMap.getAsString(JnEntityAsyncTask.Fields.data);
+		String data = internalMap.getAsString(JsonFieldNames.data);
 		CcpStringDecorator ccpStringDecorator = new CcpStringDecorator(data);
 		CcpTextDecorator ccpStringDecoratorText = ccpStringDecorator.text();
 		CcpTextDecorator decodedData = ccpStringDecoratorText.fromBase64();
@@ -136,11 +133,7 @@ public class JnMensageriaConsumerGcpPubSubPushSpringStarter {
 	@PostMapping("/testing")
 	public void onReceiveMessageTesting(@PathVariable("topic") String topic, @RequestBody Map<String, Object> json) {
 		CcpJsonRepresentation md = new CcpJsonRepresentation(json);
-		JnMensageriaReceiver.INSTANCE.executeProcess(
-				JnEntityAsyncTask.ENTITY,  
-				topic,  
-				md 
-				);
+		JnMensageriaReceiver.INSTANCE.executeProcess(topic, md);
 	}
 
 }
