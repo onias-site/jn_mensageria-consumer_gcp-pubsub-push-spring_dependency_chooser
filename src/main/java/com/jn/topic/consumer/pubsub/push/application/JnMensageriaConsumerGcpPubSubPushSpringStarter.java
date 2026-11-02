@@ -24,7 +24,7 @@ import com.ccp.implementations.db.bulk.elasticsearch.CcpElasticSerchDbBulk;
 import com.ccp.implementations.db.crud.elasticsearch.CcpElasticSearchCrud;
 import com.ccp.implementations.db.query.elasticsearch.CcpElasticSearchQueryExecutor;
 import com.ccp.implementations.db.utils.elasticsearch.CcpElasticSearchDbRequest;
-import com.ccp.implementations.email.sendgrid.CcpSendGridEmailSender;
+import com.ccp.implementations.email.sendgrid.CcpSendGridEmailProvider;
 import com.ccp.implementations.file.bucket.gcp.CcpGcpFileBucket;
 import com.ccp.implementations.http.apache.mime.CcpApacheMimeHttp;
 import com.ccp.implementations.instant.messenger.telegram.CcpTelegramInstantMessenger;
@@ -75,7 +75,7 @@ public class JnMensageriaConsumerGcpPubSubPushSpringStarter {
 		CcpElasticSearchQueryExecutor ccpElasticSearchQueryExecutor = CcpElasticSearchQueryExecutor.INSTANCE;
 		CcpTelegramInstantMessenger ccpTelegramInstantMessenger = CcpTelegramInstantMessenger.INSTANCE;
 		CcpElasticSearchDbRequest ccpElasticSearchDbRequest = CcpElasticSearchDbRequest.INSTANCE;
-		CcpSendGridEmailSender ccpSendGridEmailSender = CcpSendGridEmailSender.INSTANCE;
+		CcpSendGridEmailProvider ccpSendGridEmailSender = CcpSendGridEmailProvider.INSTANCE;
 		CcpElasticSerchDbBulk ccpElasticSerchDbBulk = CcpElasticSerchDbBulk.INSTANCE;
 		CcpElasticSearchCrud ccpElasticSearchCrud = CcpElasticSearchCrud.INSTANCE;
 		CcpGsonJsonHandler ccpGsonJsonHandler = CcpGsonJsonHandler.INSTANCE;
